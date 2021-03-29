@@ -19,15 +19,18 @@
 #'     notation of the paper).
 #'
 #' @examples
+#' \dontrun{
+#' # Train a quantile forest.
 #' n <- 50
-#' p <- 2
+#' p <- 10
 #' X <- matrix(rnorm(n * p), n, p)
-#' Y <- X + matrix(rnorm(n * p), ncol=p)
-#' drf.forest <- drf(X = X, Y = Y, splitting.rule = "FourierMMD", num.features = 10)
-#' 
+#' Y <- X[, 1] * rnorm(n)
+#' q.forest <- quantile_forest(X, Y, quantiles = c(0.1, 0.5, 0.9))
+#'
 #' # Examine a particular tree.
-#' q.tree <- get_tree(drf.forest, 3)
+#' q.tree <- get_tree(q.forest, 3)
 #' q.tree$nodes
+#' }
 #'
 #' @export
 get_tree <- function(forest, index) {
@@ -107,14 +110,17 @@ get_tree <- function(forest, index) {
 #' is the number of times the feature was split on at that depth.
 #'
 #' @examples
+#' \dontrun{
+#' # Train a quantile forest.
 #' n <- 50
-#' p <- 2
+#' p <- 10
 #' X <- matrix(rnorm(n * p), n, p)
-#' Y <- X + matrix(rnorm(n * p), ncol=p)
-#' drf.forest <- drf(X = X, Y = Y, splitting.rule = "FourierMMD", num.features = 10)
+#' Y <- X[, 1] * rnorm(n)
+#' q.forest <- quantile_forest(X, Y, quantiles = c(0.1, 0.5, 0.9))
 #'
 #' # Calculate the split frequencies for this forest.
-#' split_frequencies(drf.forest)
+#' split_frequencies(q.forest)
+#' }
 #'
 #' @export
 split_frequencies <- function(forest, max.depth = 4) {
@@ -134,14 +140,17 @@ split_frequencies <- function(forest, max.depth = 4) {
 #' @return A list specifying an 'importance value' for each feature.
 #'
 #' @examples
+#' \dontrun{
+#' # Train a quantile forest.
 #' n <- 50
-#' p <- 2
+#' p <- 10
 #' X <- matrix(rnorm(n * p), n, p)
-#' Y <- X + matrix(rnorm(n * p), ncol=p)
-#' drf.forest <- drf(X = X, Y = Y, splitting.rule = "FourierMMD", num.features = 10)
+#' Y <- X[, 1] * rnorm(n)
+#' q.forest <- quantile_forest(X, Y, quantiles = c(0.1, 0.5, 0.9))
 #'
 #' # Calculate the 'importance' of each feature.
-#' variable_importance(drf.forest)
+#' variable_importance(q.forest)
+#' }
 #'
 #' @export
 variable_importance <- function(forest, decay.exponent = 2, max.depth = 4) {
@@ -168,16 +177,18 @@ variable_importance <- function(forest, decay.exponent = 2, max.depth = 4) {
 #'         training data. The value at (i, j) gives the weight of training sample j for test sample i.
 #'
 #' @examples
-#' n <- 50
-#' p <- 2
-#' X <- matrix(rnorm(n * p), n, p)
-#' Y <- X + matrix(rnorm(n * p), ncol=p)
-#' drf.forest <- drf(X = X, Y = Y, splitting.rule = "FourierMMD", num.features = 10)
-#' sample.weights.oob <- get_sample_weights(drf.forest)
+#' \dontrun{
+#' p <- 10
+#' n <- 100
+#' X <- matrix(2 * runif(n * p) - 1, n, p)
+#' Y <- (X[, 1] > 0) + 2 * rnorm(n)
+#' rrf <- drf(X, matrix(Y,ncol=1), mtry = p)
+#' sample.weights.oob <- get_sample_weights(rrf)
 #'
 #' n.test <- 15
 #' X.test <- matrix(2 * runif(n.test * p) - 1, n.test, p)
-#' sample.weights <- get_sample_weights(drf.forest, X.test)
+#' sample.weights <- get_sample_weights(rrf, X.test)
+#' }
 #'
 #' @export
 get_sample_weights <- function(forest, newdata = NULL, num.threads = NULL) {
@@ -213,7 +224,7 @@ leaf_stats.default <- function(forest, samples, ...){
 }
 
 #' Calculate summary stats given a set of samples for regression forests.
-#' @param forest The DRF forest
+#' @param forest The GRF forest
 #' @param samples The samples to include in the calculations.
 #' @param ... Additional arguments (currently ignored).
 #'
@@ -226,4 +237,51 @@ leaf_stats.drf <- function(forest, samples, ...){
   return(leaf_stats)
 }
 
+#' Compute the median heuristic for the MMD bandwidth choice
+#' @param Y the response matrix
+#'
+#' @return the median heuristic
+medianHeuristic <- function(Y) {
+  return(stats::median(sqrt(stats::dist(Y)/2)))
+}
 
+#' Weighted quantiles
+#' @param x a vector of observations
+#' @param w a vector of weights
+#' @param probs the given probabilities for which we want to get quantiles
+#' @param na.rm should we remove missing values.
+weighted.quantile <- function(x, w, probs=seq(0,1,0.25), na.rm=TRUE) {
+  x <- as.numeric(as.vector(x))
+  w <- as.numeric(as.vector(w))
+  if(anyNA(x) || anyNA(w)) {
+    ok <- !(is.na(x) | is.na(w))
+    x <- x[ok]
+    w <- w[ok]
+  }
+  stopifnot(all(w >= 0))
+  if(all(w == 0)) stop("All weights are zero", call.=FALSE)
+  #'
+  oo <- order(x)
+  x <- x[oo]
+  w <- w[oo]
+  Fx <- cumsum(w)/sum(w)
+  #'
+  result <- numeric(length(probs))
+  for(i in seq_along(result)) {
+    p <- probs[i]
+    lefties <- which(Fx <= p)
+    if(length(lefties) == 0) {
+      result[i] <- x[1]
+    } else {
+      left <- max(lefties)
+      result[i] <- x[left]
+      if(Fx[left] < p && left < length(x)) {
+        right <- left+1
+        y <- x[left] + (x[right]-x[left]) * (p-Fx[left])/(Fx[right]-Fx[left])
+        if(is.finite(y)) result[i] <- y
+      }
+    }
+  }
+  names(result) <- paste0(format(100 * probs, trim = TRUE), "%")
+  return(result)
+}

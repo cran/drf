@@ -27,15 +27,17 @@ This function allows for examining the weights directly, so they could be potent
 input to a different analysis.
 }
 \examples{
-n <- 50
-p <- 2
-X <- matrix(rnorm(n * p), n, p)
-Y <- X + matrix(rnorm(n * p), ncol=p)
-drf.forest <- drf(X = X, Y = Y, splitting.rule = "FourierMMD", num.features = 10)
-sample.weights.oob <- get_sample_weights(drf.forest)
+\dontrun{
+p <- 10
+n <- 100
+X <- matrix(2 * runif(n * p) - 1, n, p)
+Y <- (X[, 1] > 0) + 2 * rnorm(n)
+rrf <- drf(X, matrix(Y,ncol=1), mtry = p)
+sample.weights.oob <- get_sample_weights(rrf)
 
 n.test <- 15
 X.test <- matrix(2 * runif(n.test * p) - 1, n.test, p)
-sample.weights <- get_sample_weights(drf.forest, X.test)
+sample.weights <- get_sample_weights(rrf, X.test)
+}
 
 }

@@ -19,13 +19,16 @@ is the number of times the feature was split on at that depth.
 Calculate which features the forest split on at each depth.
 }
 \examples{
+\dontrun{
+# Train a quantile forest.
 n <- 50
-p <- 2
+p <- 10
 X <- matrix(rnorm(n * p), n, p)
-Y <- X + matrix(rnorm(n * p), ncol=p)
-drf.forest <- drf(X = X, Y = Y, splitting.rule = "FourierMMD", num.features = 10)
+Y <- X[, 1] * rnorm(n)
+q.forest <- quantile_forest(X, Y, quantiles = c(0.1, 0.5, 0.9))
 
 # Calculate the split frequencies for this forest.
-split_frequencies(drf.forest)
+split_frequencies(q.forest)
+}
 
 }

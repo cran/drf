@@ -7,7 +7,7 @@
 \method{leaf_stats}{drf}(forest, samples, ...)
 }
 \arguments{
-\item{forest}{The DRF forest}
+\item{forest}{The GRF forest}
 
 \item{samples}{The samples to include in the calculations.}
 

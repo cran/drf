@@ -31,14 +31,17 @@ A DRF tree object containing the below attributes.
 Retrieve a single tree from a trained forest object.
 }
 \examples{
+\dontrun{
+# Train a quantile forest.
 n <- 50
-p <- 2
+p <- 10
 X <- matrix(rnorm(n * p), n, p)
-Y <- X + matrix(rnorm(n * p), ncol=p)
-drf.forest <- drf(X = X, Y = Y, splitting.rule = "FourierMMD", num.features = 10)
+Y <- X[, 1] * rnorm(n)
+q.forest <- quantile_forest(X, Y, quantiles = c(0.1, 0.5, 0.9))
 
 # Examine a particular tree.
-q.tree <- get_tree(drf.forest, 3)
+q.tree <- get_tree(q.forest, 3)
 q.tree$nodes
+}
 
 }

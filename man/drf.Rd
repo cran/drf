@@ -10,7 +10,8 @@ drf(
   num.trees = 500,
   splitting.rule = "FourierMMD",
   num.features = 10,
-  bandwidth = 1,
+  bandwidth = NULL,
+  response.scaling = TRUE,
   node.scaling = FALSE,
   sample.weights = NULL,
   clusters = NULL,
@@ -26,7 +27,8 @@ drf(
   ci.group.size = 2,
   compute.oob.predictions = TRUE,
   num.threads = NULL,
-  seed = stats::runif(1, 0, .Machine$integer.max)
+  seed = stats::runif(1, 0, .Machine$integer.max),
+  compute.variable.importance = FALSE
 )
 }
 \arguments{
@@ -41,7 +43,9 @@ one-hot-encoding will be implicitely used.}
 
 \item{num.features}{a numeric value, in case of "FourierMMD", the number of random features to sample.}
 
-\item{bandwidth}{a numeric value, the bandwidth of the Gaussian kernel used in case of "FourierMMD".}
+\item{bandwidth}{a numeric value, the bandwidth of the Gaussian kernel used in case of "FourierMMD", by default the value is NULL and the median heuristic is used.}
+
+\item{response.scaling}{a boolean value, should the reponses be globally scaled at first.}
 
 \item{node.scaling}{a boolean value, should the responses be scaled or not by node.}
 
@@ -101,6 +105,8 @@ be at least 2. Default is 2.}
 to the maximum hardware concurrency.}
 
 \item{seed}{The seed of the C++ random number generator.}
+
+\item{compute.variable.importance}{boolean, should the variable importance be computed in the object.}
 }
 \value{
 A trained distributional random forest object.
@@ -126,7 +132,7 @@ cor.pred <- predict(drf.forest, X.test, functional = "cor")
 cor.oob.pred <- predict(drf.forest,  functional = "cor")
 
 # Train a distributional random forest with "FourierMMD" splitting rule.
-n <- 50
+n <- 100
 p <- 2
 X <- matrix(rnorm(n * p), n, p)
 Y <- X + matrix(rnorm(n * p), ncol=p)

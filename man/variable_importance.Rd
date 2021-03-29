@@ -20,13 +20,16 @@ A list specifying an 'importance value' for each feature.
 A simple weighted sum of how many times feature i was split on at each depth in the forest.
 }
 \examples{
+\dontrun{
+# Train a quantile forest.
 n <- 50
-p <- 2
+p <- 10
 X <- matrix(rnorm(n * p), n, p)
-Y <- X + matrix(rnorm(n * p), ncol=p)
-drf.forest <- drf(X = X, Y = Y, splitting.rule = "FourierMMD", num.features = 10)
+Y <- X[, 1] * rnorm(n)
+q.forest <- quantile_forest(X, Y, quantiles = c(0.1, 0.5, 0.9))
 
 # Calculate the 'importance' of each feature.
-variable_importance(drf.forest)
+variable_importance(q.forest)
+}
 
 }
