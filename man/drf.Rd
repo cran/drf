@@ -14,8 +14,6 @@ drf(
   response.scaling = TRUE,
   node.scaling = FALSE,
   sample.weights = NULL,
-  clusters = NULL,
-  equalize.cluster.weights = FALSE,
   sample.fraction = 0.5,
   mtry = min(ceiling(sqrt(ncol(X)) + 20), ncol(X)),
   min.node.size = 15,
@@ -24,7 +22,6 @@ drf(
   honesty.prune.leaves = TRUE,
   alpha = 0.05,
   imbalance.penalty = 0,
-  ci.group.size = 2,
   compute.oob.predictions = TRUE,
   num.threads = NULL,
   seed = stats::runif(1, 0, .Machine$integer.max),
@@ -32,45 +29,31 @@ drf(
 )
 }
 \arguments{
-\item{X}{The covariates used in the regression. Can be either a matrix of numerical values, or a data.frame with characters and factors. In the latter case,
-one-hot-encoding will be implicitely used.}
+\item{X}{The covariates used in the regression. Can be either a numeric matrix or a data.frame with numeric, factor, or character columns, where the last two will be one-hot-encoded.}
 
-\item{Y}{The (multivariate) outcome. A matrix or data.frame of numeric values.}
+\item{Y}{The (multivariate) outcome variable. Needs to be a matrix or a data frame consisting of numeric values.}
 
 \item{num.trees}{Number of trees grown in the forest. Default is 500.}
 
-\item{splitting.rule}{a character value. The type of splitting rule used, can be either "CART" or "FourierMMD".}
+\item{splitting.rule}{A character value. The type of the splitting rule used, can be either "FourierMMD" (MMD splitting criterion with FastMMD approximation for speed) or "CART" (sum of standard CART criteria over the components of Y).}
 
-\item{num.features}{a numeric value, in case of "FourierMMD", the number of random features to sample.}
+\item{num.features}{A numeric value, in case of "FourierMMD", the number of random features to sample.}
 
-\item{bandwidth}{a numeric value, the bandwidth of the Gaussian kernel used in case of "FourierMMD", by default the value is NULL and the median heuristic is used.}
+\item{bandwidth}{A numeric value, the bandwidth of the Gaussian kernel used in case of "FourierMMD", the value is set to NULL by default and the square root of the median heuristic is used.}
 
-\item{response.scaling}{a boolean value, should the reponses be globally scaled at first.}
+\item{response.scaling}{A boolean value, should the responses be standardized before fitting the forest. Default is TRUE.}
 
-\item{node.scaling}{a boolean value, should the responses be scaled or not by node.}
+\item{node.scaling}{A boolean value, should the responses be standardized in every node of every tree. Default is FALSE.}
 
 \item{sample.weights}{(experimental) Weights given to an observation in estimation.
 If NULL, each observation is given the same weight. Default is NULL.}
-
-\item{clusters}{Vector of integers or factors specifying which cluster each observation corresponds to.
-Default is NULL (ignored).}
-
-\item{equalize.cluster.weights}{If FALSE, each unit is given the same weight (so that bigger
-clusters get more weight). If TRUE, each cluster is given equal weight in the forest. In this case,
-during training, each tree uses the same number of observations from each drawn cluster: If the
-smallest cluster has K units, then when we sample a cluster during training, we only give a random
-K elements of the cluster to the tree-growing procedure. When estimating average treatment effects,
-each observation is given weight 1/cluster size, so that the total weight of each cluster is the
-same. Note that, if this argument is FALSE, sample weights may also be directly adjusted via the
-sample.weights argument. If this argument is TRUE, sample.weights must be set to NULL. Default is
-FALSE.}
 
 \item{sample.fraction}{Fraction of the data used to build each tree.
 Note: If honesty = TRUE, these subsamples will
 further be cut by a factor of honesty.fraction. Default is 0.5.}
 
 \item{mtry}{Number of variables tried for each split. Default is
-\eqn{\sqrt p + 20} where p is the number of variables.}
+\eqn{\sqrt p + 20}, where p is the number of predictors.}
 
 \item{min.node.size}{A target for the minimum number of observations in each tree leaf. Note that nodes
 with size smaller than min.node.size can occur, as in the original randomForest package.
@@ -78,26 +61,21 @@ Default is 5.}
 
 \item{honesty}{Whether to use honest splitting (i.e., sub-sample splitting). Default is TRUE.
 For a detailed description of honesty, honesty.fraction, honesty.prune.leaves, and recommendations for
-parameter tuning, see the grf reference for more information (initial source)
-\href{https://grf-labs.github.io/grf/REFERENCE.html#honesty-honesty-fraction-honesty-prune-leaves}{algorithm reference}.}
+parameter tuning, see the \href{https://grf-labs.github.io/grf/REFERENCE.html#honesty-honesty-fraction-honesty-prune-leaves}{GRF reference}
+for more information (the original source).}
 
-\item{honesty.fraction}{The fraction of data that will be used for determining splits if honesty = TRUE. Corresponds
-to set J1 in the notation of the paper. Default is 0.5 (i.e. half of the data is used for
-determining splits).}
+\item{honesty.fraction}{The fraction of data that will be used for determining splits if honesty = TRUE. Default is 0.5 (i.e. half of the data is used for
+determining splits and the other half for populating the nodes of the tree).}
 
 \item{honesty.prune.leaves}{If TRUE, prunes the estimation sample tree such that no leaves
-are empty. If FALSE, keep the same tree as determined in the splits sample (if an empty leave is encountered, that
+are empty. If FALSE, keeps the same tree as determined in the splits sample (if an empty leave is encountered, that
 tree is skipped and does not contribute to the estimate). Setting this to FALSE may improve performance on
 small/marginally powered data, but requires more trees (note: tuning does not adjust the number of trees).
 Only applies if honesty is enabled. Default is TRUE.}
 
-\item{alpha}{A tuning parameter that controls the maximum imbalance of a split. Default is 0.05.}
+\item{alpha}{A tuning parameter that controls the maximum imbalance of a split. Default is 0.05, meaning a child node will contain at most 5\% of observations in the parent node.}
 
 \item{imbalance.penalty}{A tuning parameter that controls how harshly imbalanced splits are penalized. Default is 0.}
-
-\item{ci.group.size}{The forest will grow ci.group.size trees on each subsample.
-In order to provide confidence intervals, ci.group.size must
-be at least 2. Default is 2.}
 
 \item{compute.oob.predictions}{Whether OOB predictions on training set should be precomputed. Default is TRUE.}
 
@@ -109,41 +87,65 @@ to the maximum hardware concurrency.}
 \item{compute.variable.importance}{boolean, should the variable importance be computed in the object.}
 }
 \value{
-A trained distributional random forest object.
+A trained Distributional Random Forest object.
 }
 \description{
-Trains a distributional random forest that can be used to estimate
-statistical functional F(P(Y | X)) for possibly multivariate response Y.
+Trains a Distributional Random Forest which estimates the full conditional distribution \eqn{P(Y | X)}
+for possibly multivariate response Y and predictors X. The conditional distribution estimate is represented
+as a weighted distribution of the training data. The weights can be conveniently used in the downstream analysis
+to estimate any quantity of interest \eqn{\tau(P(Y | X))}.
 }
 \examples{
-# Train a distributional random forest with CART splitting rule.
-n <- 100
-p <- 2
-X <- matrix(rnorm(n * p), n, p)
-Y <- X + matrix(rnorm(n * p), ncol=p)
-drf.forest <- drf(X = X, Y = Y)
+\donttest{
+library(drf)
 
-# Predict conditional correlation.
-X.test <- matrix(0, 101, p)
-X.test[, 1] <- seq(-2, 2, length.out = 101)
-cor.pred <- predict(drf.forest, X.test, functional = "cor")
+n = 10000
+p = 20
+d = 3
 
-# Predict on out-of-bag training samples.
-cor.oob.pred <- predict(drf.forest,  functional = "cor")
+# Generate training data
+X = matrix(rnorm(n * p), nrow=n)
+Y = matrix(rnorm(n * d), nrow=n)
+Y[, 1] = Y[, 1] + X[, 1]
+Y[, 2] = Y[, 2] * X[, 2]
+Y[, 3] = Y[, 3] * X[, 1] + X[, 2]
 
-# Train a distributional random forest with "FourierMMD" splitting rule.
-n <- 100
-p <- 2
-X <- matrix(rnorm(n * p), n, p)
-Y <- X + matrix(rnorm(n * p), ncol=p)
-drf.forest <- drf(X = X, Y = Y, splitting.rule = "FourierMMD", num.features = 10)
+# Fit DRF object
+drf.forest = drf(X, Y)
 
-# Predict conditional correlation.
-X.test <- matrix(0, 101, p)
-X.test[, 1] <- seq(-2, 2, length.out = 101)
-cor.pred <- predict(drf.forest, X.test, functional = "cor")
+# Generate test data
+X_test = matrix(rnorm(10 * p), nrow=10)
 
-# Predict on out-of-bag training samples.
-cor.oob.pred <- predict(drf.forest,  functional = "cor")
+out = predict(drf.forest, newdata=X_test)
+# Compute E[Y_1 | X] for all data in X_test directly from
+# the weights representing the estimated distribution
+out$weights \%*\% out$y[,1]
+
+out = predict(drf.forest, newdata=X_test,
+              functional='mean')
+# Compute E[Y_1 | X] for all data in X_test using built-in functionality
+out[,1]
+
+out = predict(drf.forest, newdata=X_test,
+              functional='quantile',
+              quantiles=c(0.25, 0.75),
+              transformation=function(y){y[1] * y[2] * y[3]})
+# Compute 25\% and 75\% quantiles of Y_1*Y_2*Y_3, conditionally on X = X_test[1, ]
+out[1,,]
+
+out = predict(drf.forest, newdata=X_test,
+              functional='cov',
+              transformation=function(y){matrix(1:6, nrow=2) \%*\% y})
+# Compute 2x2 covariance matrix for (1*Y_1 + 3*Y_2 + 5*Y_3, 2*Y_1 + 4*Y_2 + 6*Y_3),
+# conditionally on X = X_test[1, ]
+out[1,,]
+
+out = predict(drf.forest, newdata=X_test,
+              functional='custom',
+              custom.functional=function(y, w){c(sum(y[, 1] * w), sum(y[, 2] * w))})
+# Compute E[Y_1, Y_2 | X] for all data in X_test by providing custom functional that
+# computes it from the weights
+out
+}
 
 }
