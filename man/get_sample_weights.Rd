@@ -4,7 +4,12 @@
 \alias{get_sample_weights}
 \title{Given a trained forest and test data, compute the training sample weights for each test point.}
 \usage{
-get_sample_weights(forest, newdata = NULL, num.threads = NULL)
+get_sample_weights(
+  forest,
+  newdata = NULL,
+  estimate.uncertainty = FALSE,
+  num.threads = NULL
+)
 }
 \arguments{
 \item{forest}{The trained forest.}
@@ -12,19 +17,37 @@ get_sample_weights(forest, newdata = NULL, num.threads = NULL)
 \item{newdata}{Points at which predictions should be made. If NULL,
 makes out-of-bag predictions on the training set instead
 (i.e., provides predictions at Xi using only trees that did
-not use the i-th training example).#' @param max.depth Maximum depth of splits to consider.}
+not use the i-th training example).}
+
+\item{estimate.uncertainty}{Whether to return a single weight for each sample or 
+return B weight vectors calculated on B CI groups for each sample. See Details and return value docu.}
 
 \item{num.threads}{Number of threads used in training. If set to NULL, the software
 automatically selects an appropriate amount.}
 }
 \value{
-A sparse matrix where each row represents a test sample, and each column is a sample in the
-        training data. The value at (i, j) gives the weight of training sample j for test sample i.
+\item{\code{estimate.uncertainty=FALSE}}{A sparse matrix where each row represents a test sample, and each column is a sample in the
+        training data. The value at (i, j) gives the weight of training sample j for test sample i.}
+        \item{\code{estimate.uncertainty=TRUE}}{A list of length \code{nrow(test sample)} where each item is a \code{B x w} sparse 
+        matrix, where \code{B} is the number of CI groups and \code{w=nrow(Y)}. This matrix essentially contains 
+        \code{B} separate weight vectors, one in each row.}
 }
 \description{
 During normal prediction, these weights are computed as an intermediate step towards producing estimates.
 This function allows for examining the weights directly, so they could be potentially be used as the
 input to a different analysis.
+}
+\details{
+To estimate the uncertainty, a set of \code{B=(num.trees)/(ci.group.size)} 
+weights is produced for each sample when \code{estimate.uncertainty=TRUE}. 
+These \code{B} weights arise from \code{B} subforests (CI groups)
+inside the estimation routine and may be seen as bootstrap 
+approximation to the estimation uncertainty of the DRF estimator. As such, they 
+can be used to build confidence intervals for functionals. For instance, for 
+univariate functionals, one may calculate one functional per weight to obtain
+\code{B} estimates, with which the variance can be calculated. Then the usual
+normal approximation can be used to construct confidence intervals for said functional.
+Uncertainty weights are not available OOB.
 }
 \examples{
 \dontrun{

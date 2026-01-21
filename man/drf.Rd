@@ -7,7 +7,7 @@
 drf(
   X,
   Y,
-  num.trees = 500,
+  num.trees = 3000,
   splitting.rule = "FourierMMD",
   num.features = 10,
   bandwidth = NULL,
@@ -22,10 +22,11 @@ drf(
   honesty.prune.leaves = TRUE,
   alpha = 0.05,
   imbalance.penalty = 0,
-  compute.oob.predictions = TRUE,
+  compute.oob.predictions = FALSE,
   num.threads = NULL,
   seed = stats::runif(1, 0, .Machine$integer.max),
-  compute.variable.importance = FALSE
+  compute.variable.importance = FALSE,
+  ci.group.size = as.integer(num.trees/30)
 )
 }
 \arguments{
@@ -33,7 +34,7 @@ drf(
 
 \item{Y}{The (multivariate) outcome variable. Needs to be a matrix or a data frame consisting of numeric values.}
 
-\item{num.trees}{Number of trees grown in the forest. Default is 500.}
+\item{num.trees}{Number of trees grown in the forest. Default is 3000.}
 
 \item{splitting.rule}{A character value. The type of the splitting rule used, can be either "FourierMMD" (MMD splitting criterion with FastMMD approximation for speed) or "CART" (sum of standard CART criteria over the components of Y).}
 
@@ -77,7 +78,7 @@ Only applies if honesty is enabled. Default is TRUE.}
 
 \item{imbalance.penalty}{A tuning parameter that controls how harshly imbalanced splits are penalized. Default is 0.}
 
-\item{compute.oob.predictions}{Whether OOB predictions on training set should be precomputed. Default is TRUE.}
+\item{compute.oob.predictions}{Whether OOB predictions on training set should be precomputed.}
 
 \item{num.threads}{Number of threads used in training. By default, the number of threads is set
 to the maximum hardware concurrency.}
@@ -85,6 +86,10 @@ to the maximum hardware concurrency.}
 \item{seed}{The seed of the C++ random number generator.}
 
 \item{compute.variable.importance}{boolean, should the variable importance be computed in the object.}
+
+\item{ci.group.size}{The forest will grow ci.group.size trees on each subsample. 
+In order to provide confidence intervals, ci.group.size must be at least 2. 
+Defaults to \code{num.trees/30} which yields 30 CI groups.}
 }
 \value{
 A trained Distributional Random Forest object.
@@ -99,7 +104,7 @@ to estimate any quantity of interest \eqn{\tau(P(Y | X))}.
 \donttest{
 library(drf)
 
-n = 10000
+n = 1000
 p = 20
 d = 3
 
@@ -148,4 +153,7 @@ out = predict(drf.forest, newdata=X_test,
 out
 }
 
+}
+\seealso{
+See \code{\link{predict.drf}} for how to make predictions, including uncertainty weights.
 }
