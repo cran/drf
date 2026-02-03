@@ -52,8 +52,8 @@
 #' \donttest{
 #' library(drf)
 #'
-#' n = 1000
-#' p = 20
+#' n = 500
+#' p = 10
 #' d = 3
 #' 
 #' # Generate training data
@@ -64,7 +64,7 @@
 #' Y[, 3] = Y[, 3] * X[, 1] + X[, 2]
 #' 
 #' # Fit DRF object
-#' drf.forest = drf(X, Y)
+#' drf.forest = drf(X, Y, num.trees=100)
 #' 
 #' # Generate test data
 #' X_test = matrix(rnorm(10 * p), nrow=10)

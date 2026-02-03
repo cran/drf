@@ -67,8 +67,8 @@
 #' \donttest{
 #' library(drf)
 #'
-#' n = 10000
-#' p = 20
+#' n = 500
+#' p = 10
 #' d = 3
 #' 
 #' # Generate training data
@@ -79,7 +79,7 @@
 #' Y[, 3] = Y[, 3] * X[, 1] + X[, 2]
 #' 
 #' # Fit DRF object
-#' drf.forest = drf(X, Y)
+#' drf.forest = drf(X, Y, num.trees=100, num.threads=1)
 #' 
 #' # Generate test data
 #' X_test = matrix(rnorm(10 * p), nrow=10)
@@ -119,7 +119,7 @@
 #' 
 #' # Simulate Data that experiences both a mean as well as sd shift
 #' set.seed(10)
-#' n<-1000
+#' n<-500
 #' 
 #' # Simulate from X
 #' x1 <- runif(n,-1,1)
@@ -132,15 +132,17 @@
 #' # Simulate dependent variable Y
 #' Y <- as.matrix(rnorm(n,mean = 0.8*(x1 > 0), sd = 1 + 1*(x2 > 0)))
 #' 
-#' # Fit DRF with 50 CI groups, each 20 trees large. This results in 50 uncertainty weights 
-#' DRF <- drf(X=X, Y=Y,num.trees=1000, min.node.size = 5, ci.group.size=1000/50)
+#' # Fit DRF with 50 CI groups, each 10 trees large. This results in 50 uncertainty weights 
+#' DRF <- drf(X=X, Y=Y,num.trees=500, min.node.size = 5, ci.group.size=500/50, num.threads=1)
 #' 
 #' # Obtain Test point
 #' x<-matrix(c(0.2, 0.4, runif(8,-1,1)), nrow=1, ncol=10)
-#' DRFpred<-predict(DRF, newdata=x, estimate.uncertainty=TRUE)
+#' 
+#' # (we only use 2 threads in this example due to cran limitations)
+#' DRFpred<-predict(DRF, newdata=x, estimate.uncertainty=TRUE, num.threads=1)
 #' 
 #' ## Sample from P_{Y| X=x}
-#' Yxs<-Y[sample(1:n, size=n, replace = T, DRFpred$weights[1,])]
+#' Yxs<-Y[sample(1:n, size=n, replace = TRUE, DRFpred$weights[1,])]
 #' 
 #' # Calculate quantile prediction as weighted quantiles from Y
 #' qx <- quantile(Yxs, probs = c(0.05,0.95))
@@ -159,7 +161,7 @@
 #' qxb<-matrix(NaN, nrow=B, ncol=2)
 #' muxb<-matrix(NaN, nrow=B, ncol=1)
 #' for (b in 1:B){
-#'   Yxsb<-Y[sample(1:n, size=n, replace = T, DRFpred$weights.uncertainty[[1]][b,])]
+#'   Yxsb<-Y[sample(1:n, size=n, replace = TRUE, DRFpred$weights.uncertainty[[1]][b,])]
 #'   qxb[b,] <- quantile(Yxsb, probs = c(0.05,0.95))
 #'   muxb[b] <- mean(Yxsb)
 #' }
@@ -173,7 +175,7 @@
 #' CI.lower.mu <- mux - qnorm(1-alpha/2)*sqrt(var(muxb))
 #' CI.upper.mu <- mux + qnorm(1-alpha/2)*sqrt(var(muxb))
 #' 
-#' hist(Yxs, prob=T)
+#' hist(Yxs, prob=TRUE)
 #' z<-seq(-6,7,by=0.01)
 #' d<-dnorm(z, mean=0.8 * (x[1] > 0), sd=(1+(x[2] > 0)))
 #' lines(z,d, col="darkred"  )
